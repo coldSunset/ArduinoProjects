@@ -1,2 +1,0 @@
-# ArduinoProjects
-Various Arduino Projects

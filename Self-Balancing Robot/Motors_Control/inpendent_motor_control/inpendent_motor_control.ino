@@ -8,8 +8,8 @@ const int MOT_IN2 = 7;
 const int MOT_IN3 = 2;
 const int MOT_IN4 = 3;
 
-int MOT_SPEED1 = 255; // speed of motors 
-int MOT_SPEED2 = 255; 
+int MOT_SPEED1 = 0; // speed of motors 
+int MOT_SPEED2 = 0; 
 
 //structure defintions for motor 
 
@@ -43,33 +43,33 @@ void setup()
 
 void loop() 
 {
-  goForward(motorA); 
-  goForward(motorB); 
-  delay(3000); 
+  //goForward(motorA); 
+  //goForward(motorB); 
+  /*delay(3000); 
   goBackward(motorA); 
   goBackward(motorB); 
   delay(3000); 
   brakeMotor(motorA); 
   brakeMotor(motorB); 
-  delay(3000); 
+  delay(3000); */
 }
 
 //
 
 void setup_Motor(struct Motor thisMotor) // sets up all motors in brake position
 {
-  pinMode(thisMotor.enablePin, OUTPUT); // set PWM signal to output 
+ // pinMode(thisMotor.enablePin, OUTPUT); // set PWM signal to output 
   pinMode(thisMotor.inputPin1, OUTPUT); 
   pinMode(thisMotor.inputPin2, OUTPUT); 
   digitalWrite(thisMotor.inputPin1, LOW); 
   digitalWrite(thisMotor.inputPin2, LOW); 
-  analogWrite(thisMotor.motorSpeed, 0); 
+  analogWrite(thisMotor.enablePin, 127); 
 
 }
 
 void goForward(struct Motor thisMotor)
 {
-  analogWrite(thisMotor.motorSpeed, 255); 
+  analogWrite(thisMotor.motorSpeed, 127); 
   digitalWrite(thisMotor.inputPin1, HIGH); 
   digitalWrite(thisMotor.inputPin2, LOW); 
 }

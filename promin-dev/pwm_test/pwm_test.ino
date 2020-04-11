@@ -4,7 +4,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(5, OUTPUT); 
   analogWrite(6, 55); 
-  analogWrite(11, 200); 
+ // analogWrite(11, 200); 
 }
 
 // the loop function runs over and over again forever

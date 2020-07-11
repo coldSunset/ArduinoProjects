@@ -5,6 +5,8 @@ void setup() {
   pinMode(5, OUTPUT); 
   analogWrite(6, 55); 
   analogWrite(11, 200); 
+  Serial.begin(115200); 
+  Serial.println(LED_BUILTIN); 
 }
 
 // the loop function runs over and over again forever

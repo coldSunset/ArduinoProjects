@@ -1,12 +1,12 @@
 
-const int ENA = 5; // PWM signal on promini (remove jumper) 
-const int ENB = 6; // second PWM signal on promini
+const int ENA = 9; // PWM signal on promini (remove jumper) 
+const int ENB = 10; // second PWM signal on promini
 
-const int MOT_IN1 = 4; //digital pins for direction control 
-const int MOT_IN2 = 7;
+const int MOT_IN1 = 2; //digital pins for direction control 
+const int MOT_IN2 = 3;
 
-const int MOT_IN3 = 2;
-const int MOT_IN4 = 3;
+const int MOT_IN3 = 4;
+const int MOT_IN4 = 5;
 
 int MOT_SPEED1 = 0; // speed of motors 
 int MOT_SPEED2 = 0; 
@@ -43,15 +43,15 @@ void setup()
 
 void loop() 
 {
-  //goForward(motorA); 
-  //goForward(motorB); 
-  /*delay(3000); 
-  goBackward(motorA); 
-  goBackward(motorB); 
-  delay(3000); 
-  brakeMotor(motorA); 
-  brakeMotor(motorB); 
-  delay(3000); */
+//  goForward(motorA); 
+//  goForward(motorB); 
+//  delay(3000); 
+//  goBackward(motorA); 
+//  goBackward(motorB); 
+//  delay(3000); 
+//  brakeMotor(motorA); 
+//  brakeMotor(motorB); 
+//  delay(3000); 
 }
 
 //

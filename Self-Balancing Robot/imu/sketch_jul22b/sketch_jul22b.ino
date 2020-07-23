@@ -1,6 +1,6 @@
 void setup() {
-pinMode(12, OUTPUT);
-digitalWrite(12,HIGH);
+pinMode(13, OUTPUT);
+digitalWrite(13,HIGH);
 }
 
 void loop() {

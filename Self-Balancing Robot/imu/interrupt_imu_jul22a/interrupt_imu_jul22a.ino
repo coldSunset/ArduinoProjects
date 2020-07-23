@@ -13,11 +13,11 @@ pinMode(11,OUTPUT);
   TCCR2A = 0;// set entire TCCR2A register to 0
   TCCR2B = 0;// same for TCCR2B
   TCNT2  = 0;//initialize counter value to 0
-  // set compare match register for 8khz increments
-  OCR2A = 155;// = (16*10^6) / (8000*8) - 1 (must be <256)
+  // set compare match register for 100 Hz increments
+  OCR2A = 155;// = (16*10^6) / (8000*1024) - 1 (must be <256)
   // turn on CTC mode
   TCCR2A |= (1 << WGM21);
-  // Set CS21 bit for 8 prescaler
+  // Set CS21 bit for 1024 prescaler
   TCCR2B |= (1 << CS21)|(1 << CS20)|(1 << CS22);   
   // enable timer compare interrupt
   TIMSK2 |= (1 << OCIE2A);

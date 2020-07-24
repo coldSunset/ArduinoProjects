@@ -1,7 +1,7 @@
 // 23/07/20
 // Timer interrupt on timer 2, 100 Hz 
 
-int pin = 11;
+int pin = 13;
 boolean toggle2 = 0;
 
 void setup() {
@@ -28,14 +28,14 @@ sei();//allow interrupts
 
 ISR(TIMER2_COMPA_vect){//timer1 interrupt 8kHz toggles pin 9
 //generates pulse wave of frequency 8kHz/2 = 4kHz (takes two cycles for full wave- toggle high then toggle low)
-//  if (toggle2){
-//    digitalWrite(pin,HIGH);
-//    toggle2 = 0;
-//  }
-//  else{
-//    digitalWrite(pin,LOW);
-//    toggle2 = 1;
-//  }
+  if (toggle2){
+    digitalWrite(pin,HIGH);
+    toggle2 = 0;
+  }
+  else{
+    digitalWrite(pin,LOW);
+    toggle2 = 1;
+  }
 }
 void loop() {
   // put your main code here, to run repeatedly:

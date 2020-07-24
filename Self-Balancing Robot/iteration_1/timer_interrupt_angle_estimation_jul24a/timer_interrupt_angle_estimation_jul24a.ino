@@ -61,10 +61,7 @@ ISR(TIMER2_COMPA_vect){//timer2 interrupt 100Hz for imu read
 }
 void loop() 
 {
-  //Serial.println("MAIN LOOP");
-//      angleEst();
-//    Serial.print("angleest\t"); Serial.println(angleest);
-//    delay(100); 
+
   if(imu_flag)
   {
     imu_flag = false; 
@@ -73,7 +70,6 @@ void loop()
     angleEst();
     Serial.print("angleest\t"); Serial.println(angleest);
   }
-//digitalWrite(13, HIGH); 
 
 }
 

@@ -46,6 +46,8 @@ float alpha = 0.9;
 float dt= 0.01; 
 float GxConversionFactor = 245 / (65535/2); 
 int angleest = 0;
+int angle_error=0; 
+int ange_prev=0;
 
 const int arrayLength = 5;
 int xAccelArray[arrayLength] = {0,0,0,0,0};
@@ -99,7 +101,7 @@ ISR(TIMER2_COMPA_vect){//timer2 interrupt 100Hz for imu read
 }
 void loop() 
 {
-
+  angle_prev = angleest; 
   if(imu_flag)
   {
     imu_flag = false; 
@@ -107,6 +109,16 @@ void loop()
     digitalWrite(13, led_state); 
     angleEst();
     Serial.print("angleest\t"); Serial.println(angleest);
+  }
+//Controller
+  angle_error = 0 - angleest; 
+  if(abs(angle_eest) > abs(angle_prev))
+  {
+    // go opposite direction 
+  }
+  else
+  {
+    //go same direction 
   }
 
 }
@@ -164,32 +176,32 @@ void angleEst(void)
 //MOTOR FUNCTIONS 
 void setup_Motor(struct Motor thisMotor) // sets up all motors in brake position
 {
- // pinMode(thisMotor.enablePin, OUTPUT); // set PWM signal to output 
+  pinMode(thisMotor.enablePin, OUTPUT); // set PWM signal to output 
   pinMode(thisMotor.inputPin1, OUTPUT); 
   pinMode(thisMotor.inputPin2, OUTPUT); 
   digitalWrite(thisMotor.inputPin1, LOW); 
   digitalWrite(thisMotor.inputPin2, LOW); 
-  analogWrite(thisMotor.enablePin, 127); 
+  analogWrite(thisMotor.enablePin, 0); 
 
 }
 
 void goForward(struct Motor thisMotor)
 {
-  analogWrite(thisMotor.motorSpeed, 127); 
+  analogWrite(thisMotor.enablePin, thisMotor.motorSpeed); 
   digitalWrite(thisMotor.inputPin1, HIGH); 
   digitalWrite(thisMotor.inputPin2, LOW); 
 }
 
 void goBackward(struct Motor thisMotor)
 {
-  analogWrite(thisMotor.motorSpeed, 255); 
+  analogWrite(thisMotor.enablePin, thisMotor.motorSpeed); 
   digitalWrite(thisMotor.inputPin1, LOW); 
   digitalWrite(thisMotor.inputPin2, HIGH);  
 }
 
 void brakeMotor(struct Motor thisMotor)
 {
-  analogWrite(thisMotor.motorSpeed, 0); 
+  analogWrite(thisMotor.enablePin, 0); 
   digitalWrite(thisMotor.inputPin1, LOW); 
   digitalWrite(thisMotor.inputPin2, LOW);
 }

@@ -97,6 +97,7 @@ void setup()
 ISR(TIMER2_COMPA_vect){//timer2 interrupt 100Hz for imu read
   imu_flag = true; 
 }
+
 void loop() 
 {
 
@@ -157,6 +158,11 @@ void angleEst(void)
   
   roll = atan2(((double) Ax), (double) sqrt(Ay*Ay + Az*Az))*57.3;
   GyX = Gx*GxConversionFactor;
+/*
+  pitch = atan2(((double) Ay), (double) sqrt(Ax*Ax + Az*Az))*57.3;
+  GyY = Gy*GYConversionFactor;
+  angleest = round(alpha*(angleest + dt*GyY) + (1-alpha)*pitch); 
+  */
   angleest = round(alpha*(angleest + dt*GyX) + (1-alpha)*roll); 
   
 }

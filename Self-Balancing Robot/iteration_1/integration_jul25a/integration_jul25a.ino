@@ -42,12 +42,13 @@ struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
 const int MPU_addr=0x68; // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 double roll = 0.0;
+double pitch = 0.0;
 float alpha = 0.9; 
 float dt= 0.01; 
 float GxConversionFactor = 245 / (65535/2); 
 int angleest = 0;
 int angle_error=0; 
-int ange_prev=0;
+int angle_prev=0;
 
 const int arrayLength = 5;
 int xAccelArray[arrayLength] = {0,0,0,0,0};
@@ -63,6 +64,9 @@ long Az = 0;
 int xGyroArray[arrayLength] = {0,0,0,0,0};
 char xGyroIndex = 0;
 int Gx = 0;
+int yGyroArray[arrayLength] = {0,0,0,0,0};
+char yGyroIndex = 0;
+int Gy = 0;
 
 long sumArray(int a[], int);
 void angleEst(void);
@@ -112,15 +116,39 @@ void loop()
     Serial.print("angleest\t"); Serial.println(angleest);
   }
 //Controller
+  motorA.motorSpeed = 50; 
+  motorB.motorSpeed = 50; 
   angle_error = 0 - angleest; 
-  if(abs(angle_eest) > abs(angle_prev))
-  {
-    // go opposite direction 
-  }
-  else
-  {
-    //go same direction 
-  }
+
+  // check if going forward or backwards
+//  Serial.print("MOT_IN1\t"); Serial.print( digitalRead(MOT_IN1));  
+//  Serial.print("\tMOT_IN2\t"); Serial.println( digitalRead(MOT_IN2));
+//    Serial.print("\t\t\tMOT_IN3\t"); Serial.print( digitalRead(MOT_IN3));  
+//  Serial.print("\tMOT_IN4\t"); Serial.println( digitalRead(MOT_IN4));
+  //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0; 
+  goBackward(motorA); 
+  goBackward(motorB);
+    if( angleest <0 )
+    {
+
+        goBackward(motorA); 
+        goBackward(motorB);   
+    }
+    else if( angleest >0 )
+    {
+        goForward(motorA); 
+        goForward(motorB);     
+    }
+//  if(abs(angleest) > abs(angle_prev))
+//  {
+//    goForward(motorA); 
+//    goForward(motorB); 
+//  }
+//  else
+//  {
+//    goBackward(motorA); 
+//    goBackward(motorB); 
+//  }
 
 }
 
@@ -165,17 +193,20 @@ void angleEst(void)
   Ax = sumArray(xAccelArray, arrayLength)/arrayLength;
   Ay = sumArray(yAccelArray, arrayLength)/arrayLength;
   Az = sumArray(zAccelArray, arrayLength)/arrayLength;
-  
+
+  /*
   Gx = sumArray(xGyroArray,arrayLength)/arrayLength;
   
   roll = atan2(((double) Ax), (double) sqrt(Ay*Ay + Az*Az))*57.3;
   GyX = Gx*GxConversionFactor;
-/*
+  angleest = round(alpha*(angleest + dt*GyX) + (1-alpha)*roll); */
+
+  Gy = sumArray(yGyroArray,arrayLength)/arrayLength;
   pitch = atan2(((double) Ay), (double) sqrt(Ax*Ax + Az*Az))*57.3;
-  GyY = Gy*GYConversionFactor;
+  GyY = Gy*GxConversionFactor;
   angleest = round(alpha*(angleest + dt*GyY) + (1-alpha)*pitch); 
-  */
-  angleest = round(alpha*(angleest + dt*GyX) + (1-alpha)*roll); 
+  
+  
   
 }
 
@@ -187,7 +218,7 @@ void setup_Motor(struct Motor thisMotor) // sets up all motors in brake position
   pinMode(thisMotor.inputPin2, OUTPUT); 
   digitalWrite(thisMotor.inputPin1, LOW); 
   digitalWrite(thisMotor.inputPin2, LOW); 
-  analogWrite(thisMotor.enablePin, 0); 
+  analogWrite(thisMotor.enablePin, 50); 
 
 }
 

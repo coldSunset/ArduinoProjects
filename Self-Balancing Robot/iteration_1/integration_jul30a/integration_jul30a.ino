@@ -38,8 +38,13 @@ struct Motor motorA = {ENA, MOT_IN1, MOT_IN2, MOT_SPEED1};
 struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
 
 //Controller
-float Kp = 0.1;
-float Ki = 1;
+float Kp = 8;
+float Ki = 0;
+float Kd = 0.8; 
+float pid_p = 0; 
+float pid_i = 0; 
+float pid_d = 0; 
+float PID = 0; 
 // IMU
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
 int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
@@ -50,9 +55,14 @@ float dt = 0.01;
 float GxConversionFactor = 245 / (65535 / 2);
 int angleest = 0;
 int angle_error = 0;
-int angle_prev = 0;
-
 const int arrayLength = 5;
+int angleErrorArrayIndex = 0; 
+int angleErrorArray[arrayLength] = {0 , 0, 0, 0, 0};
+int angle_prev = 0;
+int pre_angle_error = 0; 
+int err; 
+
+
 int xAccelArray[arrayLength] = {0, 0, 0, 0, 0};
 char xAccelIndex = 0;
 long Ax = 0;
@@ -112,15 +122,12 @@ void loop()
   if (imu_flag)
   {
     imu_flag = false;
-    led_state = !(led_state);
-    digitalWrite(13, led_state);
     angleEst();
     Serial.print("angleest\t"); Serial.print(angleest);
   }
   //Controller
-  //motorA.motorSpeed = 50;
-  //motorB.motorSpeed = 50;
-  angle_error = 0 - angleest;
+  pre_angle_error = err; 
+  angle_error = angleest -0;
 
   // check if going forward or backwards
   //  Serial.print("MOT_IN1\t"); Serial.print( digitalRead(MOT_IN1));
@@ -130,31 +137,37 @@ void loop()
   //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
   //goBackward(motorA);
   // goBackward(motorB);
-  Serial.print("\t\t PWM="); Serial.println(motorA.motorSpeed);
-  if ( angleest < 0 )
+  Serial.print("\t\t motorspeed="); Serial.println(motorA.motorSpeed);
+
+  angleErrorArray[angleErrorArrayIndex] = angle_error; 
+  angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
+  err = sumArray(angleErrorArray, arrayLength) / arrayLength;
+  pid_p = Kp * err;
+  pid_i += Ki * err; 
+  pid_d = Kd*(err- pre_angle_error)/dt ; 
+  PID = pid_p + pid_i + pid_d;
+  motorA.motorSpeed = abs(PID);
+  motorB.motorSpeed = abs(PID); 
+  if ( angleest -0 < 0 )
   {
-    motorA.motorSpeed -= Kp * angle_error;
-    motorB.motorSpeed -= Kp * angle_error;
+    digitalWrite(13, HIGH);
     goBackward(motorA);
     goBackward(motorB);
   }
-  else if ( angleest > 0 )
+  else if ( angleest-0 > 0 )
   {
-    motorA.motorSpeed -= Kp * angle_error;
-    motorB.motorSpeed -= Kp * angle_error;
+    digitalWrite(13, LOW);
     goForward(motorA);
     goForward(motorB);
   }
-  //  if(abs(angleest) > abs(angle_prev))
-  //  {
-  //    goForward(motorA);
-  //    goForward(motorB);
-  //  }
-  //  else
-  //  {
-  //    goBackward(motorA);
-  //    goBackward(motorB);
-  //  }
+
+  if(abs(angleest) >80)
+  {
+    brakeMotor(motorA); 
+    brakeMotor(motorB); 
+    while(1){} // infinite loop 
+  }
+
 
 }
 

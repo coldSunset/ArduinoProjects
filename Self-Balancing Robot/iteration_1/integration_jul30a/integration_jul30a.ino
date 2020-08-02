@@ -1,4 +1,5 @@
 #include<Wire.h>
+#include<math.h>
 // includes PWM
 
 bool imu_flag = false;
@@ -38,9 +39,9 @@ struct Motor motorA = {ENA, MOT_IN1, MOT_IN2, MOT_SPEED1};
 struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
 
 //Controller
-float Kp = 8;
-float Ki = 0;
-float Kd = 0.8; 
+float Kp = 4;
+float Ki = 10;
+float Kd = 6; 
 float pid_p = 0; 
 float pid_i = 0; 
 float pid_d = 0; 
@@ -114,6 +115,7 @@ void setup()
 
 ISR(TIMER2_COMPA_vect) { //timer2 interrupt 100Hz for imu read
   imu_flag = true;
+  led_state= (led_state++)%3; 
 }
 
 void loop()
@@ -123,8 +125,9 @@ void loop()
   {
     imu_flag = false;
     angleEst();
-    Serial.print("angleest\t"); Serial.print(angleest);
+    Serial.print("angleest  "); Serial.print(angleest);
   }
+  cli(); 
   //Controller
   pre_angle_error = err; 
   angle_error = angleest -0;
@@ -137,7 +140,7 @@ void loop()
   //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
   //goBackward(motorA);
   // goBackward(motorB);
-  Serial.print("\t\t motorspeed="); Serial.println(motorA.motorSpeed);
+  Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
 
   angleErrorArray[angleErrorArrayIndex] = angle_error; 
   angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
@@ -146,28 +149,32 @@ void loop()
   pid_i += Ki * err; 
   pid_d = Kd*(err- pre_angle_error)/dt ; 
   PID = pid_p + pid_i + pid_d;
-  motorA.motorSpeed = abs(PID);
-  motorB.motorSpeed = abs(PID); 
-  if ( angleest -0 < 0 )
+  int PID_m = map(PID, 0, 7000, 0, 255); 
+  Serial.print("\tPID= "); Serial.println(PID_m);
+  motorA.motorSpeed = abs(PID_m);
+  motorB.motorSpeed = abs(PID_m); 
+  if ( angleest -0 < 5 )
   {
     digitalWrite(13, HIGH);
     goBackward(motorA);
     goBackward(motorB);
   }
-  else if ( angleest-0 > 0 )
+  else if ( angleest-0 > -5 )
   {
     digitalWrite(13, LOW);
     goForward(motorA);
     goForward(motorB);
   }
 
-  if(abs(angleest) >80)
+  if(abs(angleest) >50)
   {
     brakeMotor(motorA); 
     brakeMotor(motorB); 
-    while(1){} // infinite loop 
+    while(1)
+    { } // infinite loop 
   }
 
+  sei(); 
 
 }
 
@@ -224,9 +231,6 @@ void angleEst(void)
   pitch = atan2(((double) Ay), (double) sqrt(Ax * Ax + Az * Az)) * 57.3;
   GyY = Gy * GxConversionFactor;
   angleest = round(alpha * (angleest + dt * GyY) + (1 - alpha) * pitch);
-
-
-
 }
 
 //MOTOR FUNCTIONS

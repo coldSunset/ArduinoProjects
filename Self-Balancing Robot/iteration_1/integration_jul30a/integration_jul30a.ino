@@ -39,13 +39,15 @@ struct Motor motorA = {ENA, MOT_IN1, MOT_IN2, MOT_SPEED1};
 struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
 
 //Controller
-float Kp = 4;
-float Ki = 10;
-float Kd = 6; 
+float Kp = 0.5;
+float Ki = 0.5;
+float Kd = 0; 
 float pid_p = 0; 
 float pid_i = 0; 
 float pid_d = 0; 
 float PID = 0; 
+int PID_m = 0; 
+
 // IMU
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
 int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
@@ -113,9 +115,9 @@ void setup()
   // sei();
 }
 
-ISR(TIMER2_COMPA_vect) { //timer2 interrupt 100Hz for imu read
+ISR(TIMER2_COMPA_vect) 
+{ //timer2 interrupt 100Hz for imu read
   imu_flag = true;
-  led_state= (led_state++)%3; 
 }
 
 void loop()
@@ -125,13 +127,13 @@ void loop()
   {
     imu_flag = false;
     angleEst();
-    Serial.print("angleest  "); Serial.print(angleest);
+
   }
   cli(); 
   //Controller
   pre_angle_error = err; 
   angle_error = angleest -0;
-
+  Serial.print("err  "); Serial.print(err);
   // check if going forward or backwards
   //  Serial.print("MOT_IN1\t"); Serial.print( digitalRead(MOT_IN1));
   //  Serial.print("\tMOT_IN2\t"); Serial.println( digitalRead(MOT_IN2));
@@ -140,7 +142,7 @@ void loop()
   //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
   //goBackward(motorA);
   // goBackward(motorB);
-  Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
+  Serial.print( "  motorspeed="); Serial.println(motorA.motorSpeed);
 
   angleErrorArray[angleErrorArrayIndex] = angle_error; 
   angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
@@ -149,17 +151,17 @@ void loop()
   pid_i += Ki * err; 
   pid_d = Kd*(err- pre_angle_error)/dt ; 
   PID = pid_p + pid_i + pid_d;
-  int PID_m = map(PID, 0, 7000, 0, 255); 
-  Serial.print("\tPID= "); Serial.println(PID_m);
-  motorA.motorSpeed = abs(PID_m);
-  motorB.motorSpeed = abs(PID_m); 
-  if ( angleest -0 < 5 )
+  PID_m = map(PID, 0, 7000, 0, 255); 
+//  Serial.print("\tPID= "); Serial.println(PID_m);
+  motorA.motorSpeed = abs(PID);
+  motorB.motorSpeed = abs(PID); 
+  if ( angleest -0 < 0 )
   {
     digitalWrite(13, HIGH);
     goBackward(motorA);
     goBackward(motorB);
   }
-  else if ( angleest-0 > -5 )
+  else if ( angleest-0 > 0 )
   {
     digitalWrite(13, LOW);
     goForward(motorA);
@@ -170,8 +172,7 @@ void loop()
   {
     brakeMotor(motorA); 
     brakeMotor(motorB); 
-    while(1)
-    { } // infinite loop 
+    while(1){ } // infinite loop 
   }
 
   sei(); 
@@ -241,7 +242,7 @@ void setup_Motor(struct Motor thisMotor) // sets up all motors in brake position
   pinMode(thisMotor.inputPin2, OUTPUT);
   digitalWrite(thisMotor.inputPin1, LOW);
   digitalWrite(thisMotor.inputPin2, LOW);
-  analogWrite(thisMotor.enablePin, 50);
+  analogWrite(thisMotor.enablePin, 0);
 
 }
 

@@ -39,8 +39,8 @@ struct Motor motorA = {ENA, MOT_IN1, MOT_IN2, MOT_SPEED1};
 struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
 
 //Controller
-float Kp = 0.5;
-float Ki = 0.5;
+float Kp = 5;
+float Ki = 1;
 float Kd = 0; 
 float pid_p = 0; 
 float pid_i = 0; 
@@ -142,16 +142,21 @@ void loop()
   //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
   //goBackward(motorA);
   // goBackward(motorB);
-  Serial.print( "  motorspeed="); Serial.println(motorA.motorSpeed);
+  Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
 
   angleErrorArray[angleErrorArrayIndex] = angle_error; 
   angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
   err = sumArray(angleErrorArray, arrayLength) / arrayLength;
   pid_p = Kp * err;
   pid_i += Ki * err; 
+  pid_i = constrain(pid_i, -300, 300); 
   pid_d = Kd*(err- pre_angle_error)/dt ; 
   PID = pid_p + pid_i + pid_d;
-  PID_m = map(PID, 0, 7000, 0, 255); 
+  PID = constrain(PID, 0, 255); 
+  //PID_m = map(PID, 0, 7000, 0, 255); 
+  Serial.print( "  pid_p="); Serial.print(pid_p);
+  Serial.print( "  pid_i="); Serial.print(pid_i);
+  Serial.print( "  pid_d="); Serial.println(pid_d);
 //  Serial.print("\tPID= "); Serial.println(PID_m);
   motorA.motorSpeed = abs(PID);
   motorB.motorSpeed = abs(PID); 

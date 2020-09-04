@@ -135,32 +135,24 @@ void loop()
   pre_angle_error = err; 
   angle_error = angleest -0;
   Serial.print("err  "); Serial.print(err);
-  // check if going forward or backwards
-  //  Serial.print("MOT_IN1\t"); Serial.print( digitalRead(MOT_IN1));
-  //  Serial.print("\tMOT_IN2\t"); Serial.println( digitalRead(MOT_IN2));
-  //    Serial.print("\t\t\tMOT_IN3\t"); Serial.print( digitalRead(MOT_IN3));
-  //  Serial.print("\tMOT_IN4\t"); Serial.println( digitalRead(MOT_IN4));
-  //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
-  //goBackward(motorA);
-  // goBackward(motorB);
+  // checkMotorDirection(); 
   Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
 
   angleErrorArray[angleErrorArrayIndex] = angle_error; 
   angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
   err = sumArray(angleErrorArray, arrayLength) / arrayLength;
   pid_p = Kp * err;
-  pid_i += Ki * err; 
-  pid_i = constrain(pid_i, -300, 300); 
+  pid_i += Ki * err;
   pid_d = Kd*(err- pre_angle_error)/dt ; 
   PID = pid_p + pid_i + pid_d;
-  PID = constrain(PID, 0, 255); 
-  //PID_m = map(PID, 0, 7000, 0, 255); 
   Serial.print( "  pid_p="); Serial.print(pid_p);
   Serial.print( "  pid_i="); Serial.print(pid_i);
   Serial.print( "  pid_d="); Serial.println(pid_d);
 //  Serial.print("\tPID= "); Serial.println(PID_m);
+
   motorA.motorSpeed = abs(PID);
   motorB.motorSpeed = abs(PID); 
+  
   if ( angleest -0 < 0 )
   {
     digitalWrite(13, HIGH);
@@ -271,4 +263,15 @@ void brakeMotor(struct Motor thisMotor)
   analogWrite(thisMotor.enablePin, 0);
   digitalWrite(thisMotor.inputPin1, LOW);
   digitalWrite(thisMotor.inputPin2, LOW);
+}
+
+void checkMotorDirection()
+{
+  Serial.print("MOT_IN1\t"); Serial.print( digitalRead(MOT_IN1));
+  Serial.print("\tMOT_IN2\t"); Serial.println( digitalRead(MOT_IN2));
+  Serial.print("\t\t\tMOT_IN3\t"); Serial.print( digitalRead(MOT_IN3));
+  Serial.print("\tMOT_IN4\t"); Serial.println( digitalRead(MOT_IN4));
+  //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
+  goBackward(motorA);
+  goBackward(motorB);
 }

@@ -1,0 +1,274 @@
+#include<Wire.h>
+#include<math.h>
+#include "serial_dbg.h"
+// includes PWM
+
+bool imu_flag = false;
+
+// MOTOR PIN ASSIGNMENTS
+const int ENA = 9; // PWM signal on promini (remove jumper)
+const int ENB = 10; // second PWM signal on promini
+
+const int MOT_IN1 = 3; //digital pins for direction control
+const int MOT_IN2 = 4;
+
+const int MOT_IN3 = 5;
+const int MOT_IN4 = 6;
+
+int MOT_SPEED1 = 0; // speed of motors
+int MOT_SPEED2 = 0;
+
+//structure defintions for motor
+
+struct Motor
+{
+  const int enablePin;
+  const int inputPin1;
+  const int inputPin2;
+  int motorSpeed;
+
+};
+
+//Function prototypes
+void setup_Motor(struct Motor thisMotor);
+void brakeMotor(struct Motor thisMotor);
+void goForward(struct Motor thisMotor);
+void goBackward(struct Motor thisMotor);
+
+//strcuture initialisations
+struct Motor motorA = {ENA, MOT_IN1, MOT_IN2, MOT_SPEED1};
+struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
+
+//Controller
+float Kp = 5;
+float Ki = 1;
+float Kd = 0; 
+float pid_p = 0; 
+float pid_i = 0; 
+float pid_d = 0; 
+float PID = 0; 
+int PID_m = 0; 
+
+// IMU
+const int MPU_addr = 0x68; // I2C address of the MPU-6050
+int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
+double roll = 0.0;
+double pitch = 0.0;
+float alpha = 0.9;
+float dt = 0.01;
+float GxConversionFactor = 245 / (65535 / 2);
+int angleest = 0;
+int angle_error = 0;
+const int arrayLength = 5;
+int angleErrorArrayIndex = 0; 
+int angleErrorArray[arrayLength] = {0 , 0, 0, 0, 0};
+int angle_prev = 0;
+int pre_angle_error = 0; 
+int err; 
+
+
+int xAccelArray[arrayLength] = {0, 0, 0, 0, 0};
+char xAccelIndex = 0;
+long Ax = 0;
+int yAccelArray[arrayLength] = {0, 0, 0, 0, 0};
+char yAccelIndex = 0;
+long Ay = 0;
+int zAccelArray[arrayLength] = {0, 0, 0, 0, 0};
+char zAccelIndex = 0;
+long Az = 0;
+
+int xGyroArray[arrayLength] = {0, 0, 0, 0, 0};
+char xGyroIndex = 0;
+int Gx = 0;
+int yGyroArray[arrayLength] = {0, 0, 0, 0, 0};
+char yGyroIndex = 0;
+int Gy = 0;
+
+long sumArray(int a[], int);
+void angleEst(void);
+
+int led_state = LOW;
+void setup()
+{
+  //cli();
+  pinMode(13, OUTPUT);
+  setup_Motor(motorA);
+  setup_Motor(motorB);
+  TCCR2A = 0;// set entire TCCR2A register to 0
+  TCCR2B = 0;// same for TCCR2B
+  TCNT2  = 0;//initialize counter value to 0
+  // set compare match register for 100 Hz increments
+  OCR2A = 155;// = (16*10^6) / (100*1024) - 1 (must be <256)
+  // turn on CTC mode
+  TCCR2A |= (1 << WGM21);
+  // Set CS21 bit for 1024 prescaler
+  TCCR2B |= (1 << CS21) | (1 << CS20) | (1 << CS22);
+  // enable timer compare interrupt
+  TIMSK2 |= (1 << OCIE2A);
+
+  Wire.begin();
+  Wire.beginTransmission(MPU_addr);
+  Wire.write(0x6B); // PWR_MGMT_1 register
+  Wire.write(0); // set to zero (wakes up the MPU-6050)
+  Wire.endTransmission(true);
+  Serial.begin(9600);
+  Serial.println("Serial Begin");
+  // sei();
+}
+
+ISR(TIMER2_COMPA_vect) 
+{ //timer2 interrupt 100Hz for imu read
+  imu_flag = true;
+}
+
+void loop()
+{
+  angle_prev = angleest;
+  if (imu_flag)
+  {
+    imu_flag = false;
+    angleEst();
+
+  }
+  cli(); 
+  //Controller
+  pre_angle_error = err; 
+  angle_error = angleest -0;
+  Serial.print("err  "); Serial.print(err);
+  // check if going forward or backwards
+  //  Serial.print("MOT_IN1\t"); Serial.print( digitalRead(MOT_IN1));
+  //  Serial.print("\tMOT_IN2\t"); Serial.println( digitalRead(MOT_IN2));
+  //    Serial.print("\t\t\tMOT_IN3\t"); Serial.print( digitalRead(MOT_IN3));
+  //  Serial.print("\tMOT_IN4\t"); Serial.println( digitalRead(MOT_IN4));
+  //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
+  //goBackward(motorA);
+  // goBackward(motorB);
+  Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
+
+  angleErrorArray[angleErrorArrayIndex] = angle_error; 
+  angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
+  err = sumArray(angleErrorArray, arrayLength) / arrayLength;
+  pid_p = Kp * err;
+  pid_i += Ki * err; 
+  pid_i = constrain(pid_i, -300, 300); 
+  pid_d = Kd*(err- pre_angle_error)/dt ; 
+  PID = pid_p + pid_i + pid_d;
+  PID = constrain(PID, 0, 255); 
+  //PID_m = map(PID, 0, 7000, 0, 255); 
+  Serial.print( "  pid_p="); Serial.print(pid_p);
+  Serial.print( "  pid_i="); Serial.print(pid_i);
+  Serial.print( "  pid_d="); Serial.println(pid_d);
+//  Serial.print("\tPID= "); Serial.println(PID_m);
+  motorA.motorSpeed = abs(PID);
+  motorB.motorSpeed = abs(PID); 
+  if ( angleest -0 < 0 )
+  {
+    digitalWrite(13, HIGH);
+    goBackward(motorA);
+    goBackward(motorB);
+  }
+  else if ( angleest-0 > 0 )
+  {
+    digitalWrite(13, LOW);
+    goForward(motorA);
+    goForward(motorB);
+  }
+
+  if(abs(angleest) >50)
+  {
+    brakeMotor(motorA); 
+    brakeMotor(motorB); 
+    while(1){ } // infinite loop 
+  }
+
+  sei(); 
+
+}
+
+long sumArray(int a[], int num_elements)
+{
+  int i;
+  long sum = 0;
+  for (i = 0; i < num_elements; i++)
+  {
+    sum = sum + a[i];
+  }
+  return (sum);
+}
+
+void angleEst(void)
+{
+  Wire.beginTransmission(MPU_addr);
+  Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H)
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU_addr, 14, true); // request a total of 14 registers
+  AcX = Wire.read() << 8 | Wire.read(); // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
+  AcY = Wire.read() << 8 | Wire.read(); // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+  AcZ = Wire.read() << 8 | Wire.read(); // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  Tmp = Wire.read() << 8 | Wire.read(); // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
+  GyX = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+  GyY = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+  GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+
+  xAccelArray[xAccelIndex] = AcX;
+  xAccelIndex = (xAccelIndex + 1) % arrayLength;
+
+  yAccelArray[yAccelIndex] = AcY;
+  yAccelIndex = (yAccelIndex + 1) % arrayLength;
+
+  zAccelArray[zAccelIndex] = AcZ;
+  zAccelIndex = (zAccelIndex + 1) % arrayLength;
+
+  xGyroArray[xGyroIndex] = GyX;
+  xGyroIndex = (xGyroIndex + 1) % arrayLength;
+
+  // Estimate Angle
+  Ax = sumArray(xAccelArray, arrayLength) / arrayLength;
+  Ay = sumArray(yAccelArray, arrayLength) / arrayLength;
+  Az = sumArray(zAccelArray, arrayLength) / arrayLength;
+
+  /*
+    Gx = sumArray(xGyroArray,arrayLength)/arrayLength;
+
+    roll = atan2(((double) Ax), (double) sqrt(Ay*Ay + Az*Az))*57.3;
+    GyX = Gx*GxConversionFactor;
+    angleest = round(alpha*(angleest + dt*GyX) + (1-alpha)*roll); */
+
+  Gy = sumArray(yGyroArray, arrayLength) / arrayLength;
+  pitch = atan2(((double) Ay), (double) sqrt(Ax * Ax + Az * Az)) * 57.3;
+  GyY = Gy * GxConversionFactor;
+  angleest = round(alpha * (angleest + dt * GyY) + (1 - alpha) * pitch);
+}
+
+//MOTOR FUNCTIONS
+void setup_Motor(struct Motor thisMotor) // sets up all motors in brake position
+{
+  pinMode(thisMotor.enablePin, OUTPUT); // set PWM signal to output
+  pinMode(thisMotor.inputPin1, OUTPUT);
+  pinMode(thisMotor.inputPin2, OUTPUT);
+  digitalWrite(thisMotor.inputPin1, LOW);
+  digitalWrite(thisMotor.inputPin2, LOW);
+  analogWrite(thisMotor.enablePin, 0);
+
+}
+
+void goForward(struct Motor thisMotor)
+{
+  analogWrite(thisMotor.enablePin, thisMotor.motorSpeed);
+  digitalWrite(thisMotor.inputPin1, HIGH);
+  digitalWrite(thisMotor.inputPin2, LOW);
+}
+
+void goBackward(struct Motor thisMotor)
+{
+  analogWrite(thisMotor.enablePin, thisMotor.motorSpeed);
+  digitalWrite(thisMotor.inputPin1, LOW);
+  digitalWrite(thisMotor.inputPin2, HIGH);
+}
+
+void brakeMotor(struct Motor thisMotor)
+{
+  analogWrite(thisMotor.enablePin, 0);
+  digitalWrite(thisMotor.inputPin1, LOW);
+  digitalWrite(thisMotor.inputPin2, LOW);
+}

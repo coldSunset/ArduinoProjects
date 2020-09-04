@@ -1,6 +1,7 @@
 #include<Wire.h>
 #include<math.h>
 #include "serial_dbg.h"
+#include <PID_v1.h>
 // includes PWM
 
 bool imu_flag = false;
@@ -34,20 +35,12 @@ void setup_Motor(struct Motor thisMotor);
 void brakeMotor(struct Motor thisMotor);
 void goForward(struct Motor thisMotor);
 void goBackward(struct Motor thisMotor);
+void checkMotorDirection(); 
+void calculatePID(); 
 
-//strcuture initialisations
+//structure initialisations
 struct Motor motorA = {ENA, MOT_IN1, MOT_IN2, MOT_SPEED1};
 struct Motor motorB = {ENB, MOT_IN3, MOT_IN4, MOT_SPEED2};
-
-//Controller
-float Kp = 5;
-float Ki = 1;
-float Kd = 0; 
-float pid_p = 0; 
-float pid_i = 0; 
-float pid_d = 0; 
-float PID = 0; 
-int PID_m = 0; 
 
 // IMU
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
@@ -57,7 +50,7 @@ double pitch = 0.0;
 float alpha = 0.9;
 float dt = 0.01;
 float GxConversionFactor = 245 / (65535 / 2);
-int angleest = 0;
+double angleest = 0;
 int angle_error = 0;
 const int arrayLength = 5;
 int angleErrorArrayIndex = 0; 
@@ -65,6 +58,23 @@ int angleErrorArray[arrayLength] = {0 , 0, 0, 0, 0};
 int angle_prev = 0;
 int pre_angle_error = 0; 
 int err; 
+
+//Controller
+float Kp = 5;
+float Ki = 1;
+float Kd = 0;
+// mycontroller 
+/* 
+float pid_p = 0; 
+float pid_i = 0; 
+float pid_d = 0; 
+float PID = 0; 
+int PID_m = 0; */
+
+// Arduino Controller
+double setpoint = 0;
+double output; 
+PID pid(&angleest, &output, &setpoint, Kp, Ki, Kd, DIRECT); 
 
 
 int xAccelArray[arrayLength] = {0, 0, 0, 0, 0};
@@ -106,6 +116,11 @@ void setup()
   // enable timer compare interrupt
   TIMSK2 |= (1 << OCIE2A);
 
+  //PID Setup 
+  pid.SetMode(AUTOMATIC); 
+  //pid.SetSampleTime(10);
+  pid.SetOutputLimits(-255, 255);
+   
   Wire.begin();
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x6B); // PWR_MGMT_1 register
@@ -131,28 +146,19 @@ void loop()
 
   }
   cli(); 
-  //Controller
-  pre_angle_error = err; 
-  angle_error = angleest -0;
-  Serial.print("err  "); Serial.print(err);
-  // checkMotorDirection(); 
-  Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
 
-  angleErrorArray[angleErrorArrayIndex] = angle_error; 
-  angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
-  err = sumArray(angleErrorArray, arrayLength) / arrayLength;
-  pid_p = Kp * err;
-  pid_i += Ki * err;
-  pid_d = Kd*(err- pre_angle_error)/dt ; 
-  PID = pid_p + pid_i + pid_d;
-  Serial.print( "  pid_p="); Serial.print(pid_p);
-  Serial.print( "  pid_i="); Serial.print(pid_i);
-  Serial.print( "  pid_d="); Serial.println(pid_d);
-//  Serial.print("\tPID= "); Serial.println(PID_m);
-
-  motorA.motorSpeed = abs(PID);
-  motorB.motorSpeed = abs(PID); 
-  
+  //void calculatePID(); 
+  pid.Compute(); 
+  motorA.motorSpeed = output;
+  motorB.motorSpeed = output; 
+  goForward(motorA);
+  goForward(motorB);
+  Serial.print("Output PWM:\t");
+  Serial.print(output);
+  Serial.print("\tangle:");
+  Serial.println(angleest);   
+  // 04/09 is this section required? 
+  /*
   if ( angleest -0 < 0 )
   {
     digitalWrite(13, HIGH);
@@ -172,7 +178,7 @@ void loop()
     brakeMotor(motorB); 
     while(1){ } // infinite loop 
   }
-
+*/
   sei(); 
 
 }
@@ -274,4 +280,28 @@ void checkMotorDirection()
   //goForward MOT_IN1 = 1, MOT_IN2 = 0, MOT_IN3 =1, MOT_IN4 =0;
   goBackward(motorA);
   goBackward(motorB);
+}
+
+void calculatePID()
+{
+//  //My implementation Controller
+//  pre_angle_error = err; // previous angle error
+//  angle_error = angleest -0;
+//  Serial.print("err  "); Serial.print(err);
+//  // checkMotorDirection(); 
+//  Serial.print( "  motorspeed="); Serial.print(motorA.motorSpeed);
+//  
+//  angleErrorArray[angleErrorArrayIndex] = angle_error; 
+//  angleErrorArrayIndex = (angleErrorArrayIndex + 1) % arrayLength;
+//  err = sumArray(angleErrorArray, arrayLength) / arrayLength;
+//  
+//  pid_p = Kp * err;
+//  pid_i += Ki * err;
+//  pid_d = Kd*(err- pre_angle_error)/dt ; 
+//  PID = pid_p + pid_i + pid_d;
+//  
+//  Serial.print( "  pid_p="); Serial.print(pid_p);
+//  Serial.print( "  pid_i="); Serial.print(pid_i);
+//  Serial.print( "  pid_d="); Serial.println(pid_d);
+//  //  Serial.print("\tPID= "); Serial.println(PID_m);
 }
